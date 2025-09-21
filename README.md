@@ -60,44 +60,53 @@ mkdir -p cmd\producer cmd\consumer internal\models
 
 ### Step 2: Start Kafka Infrastructure
 
-Create `docker-compose-simple.yml`:
+Create `docker-compose.yml`:
 
 ```yaml
 version: "3.8"
 services:
   kafka:
-    image: apache/kafka:latest
+    image: bitnami/kafka:latest
     container_name: kafka
     ports:
       - "9092:9092"
     environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
-      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      # KRaft settings
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      # Listeners
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Additional settings
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: true
+      # Disable SASL for simplicity
+      ALLOW_PLAINTEXT_LISTENER: yes
+    volumes:
+      - kafka_data:/bitnami/kafka
+
+volumes:
+  kafka_data:
+    driver: local
 ```
 
 **Start Kafka:**
 
 ```powershell
 # Start Kafka container
-docker-compose -f docker-compose-simple.yml up -d
+docker-compose up -d
 
 # Wait for Kafka to be ready (important!)
 Start-Sleep 30
 
 # Verify Kafka is running
-docker-compose -f docker-compose-simple.yml ps
+docker-compose ps
 ```
 
 ### Step 3: Create Kafka Topic
@@ -261,10 +270,10 @@ go mod tidy
 **Stop Kafka:**
 
 ```powershell
-docker-compose -f docker-compose-simple.yml down
+docker-compose down
 
 # Optional: Remove volumes
-docker-compose -f docker-compose-simple.yml down -v
+docker-compose down -v
 ```
 
 **Clean Build Files:**
@@ -304,7 +313,7 @@ kafka-logging-system/
 │   └── models/
 │       └── log.go           # Log data structures
 ├── bin/                     # Built executables
-├── docker-compose-simple.yml # Kafka infrastructure
+├── docker-compose.yml         # Kafka infrastructure (Bitnami)
 └── README.md               # This file
 ```
 
